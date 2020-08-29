@@ -6,12 +6,11 @@ module Whojudge.Database.Util where
 
 import           Control.Monad.IO.Class
 import           Control.Monad.Reader
-import           Data.Pool
 import qualified Data.Text as T
 import qualified Database.Persist as DB
 import qualified Database.Persist.Sql as DB
 
-type Database = forall m a. MonadIO m => ReaderT DB.SqlBackend IO a -> m a
+type Handle = forall m a. MonadIO m => ReaderT DB.SqlBackend IO a -> m a
 
 toId :: (DB.ToBackendKey DB.SqlBackend record) => Int -> DB.Key record
 toId a = DB.toSqlKey (fromIntegral a)

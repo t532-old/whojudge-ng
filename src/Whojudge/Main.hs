@@ -6,31 +6,31 @@
 
 module Whojudge.Main where
 
+import           Control.Monad.IO.Class
 import           Control.Monad.Logger
-import           Control.Monad.Reader
 import qualified Data.Aeson as JSON
 import           Data.Pool
 import qualified Database.Persist.Postgresql as DB
-import           Network.Wai.Handler.Warp
+import qualified Network.Wai.Handler.Warp as Warp
 import           Servant
-import           Whojudge.Api.User.Endpoint
-import           Whojudge.Api.User.Schema
-import           Whojudge.Config
+import qualified Whojudge.Api.User.Endpoint as User
+import qualified Whojudge.Api.User.Schema as User
+import qualified Whojudge.Config as Conf
 import           Whojudge.Database.Schema
-import           Whojudge.Database.Util
+import qualified Whojudge.Database.Util as DB
 
-type Api = UserPoint
+type Api = User.Point
 
-server :: Database -> Server Api
-server perform = userServer perform
+server :: DB.Handle -> Server Api
+server perform = User.server perform
 
 apiProxy :: Proxy Api
 apiProxy = Proxy
 
-app :: Database -> Application
+app :: DB.Handle -> Application
 app db = serve apiProxy (server db)
 
 main :: IO ()
-main = runStdoutLoggingT . DB.withPostgresqlPool connectionString numConnections $ \pool -> do
+main = runStdoutLoggingT . DB.withPostgresqlPool Conf.connectionString Conf.numConnections $ \pool -> do
   withResource pool (DB.runSqlConn $ DB.runMigration migrateAll)
-  liftIO $ run appPort (app (liftIO . (flip DB.runSqlPool pool)))
+  liftIO $ Warp.run Conf.appPort (app (liftIO . (flip DB.runSqlPool pool)))

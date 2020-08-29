@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4262ae844f1201c8c9db7ee2ce0f28fb34d741aba99c6c5a52cdc1bcf02683ca
+-- hash: 2c952e11141e980ebc2cd876e191f442d2bf1d4c56402b5561dc9b6b32539105
 
 name:           whojudge
 version:        0.1.0.0
@@ -27,10 +27,11 @@ source-repository head
 executable whojudge-exe
   main-is: Main.hs
   other-modules:
+      Whojudge.Api.Checker
+      Whojudge.Api.Error
       Whojudge.Api.Types
       Whojudge.Api.User.Endpoint
       Whojudge.Api.User.Schema
-      Whojudge.Api.Util
       Whojudge.Config
       Whojudge.Database.Schema
       Whojudge.Database.Util

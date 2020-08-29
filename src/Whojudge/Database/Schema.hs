@@ -48,7 +48,7 @@ share [mkPersist sqlSettings, mkDeleteCascade sqlSettings, mkMigrate "migrateAll
   -- A submission made by a user.
   -- This includes the original updated source and the judge result.
   -- A Submission to a Problem in a certain Problemset can be made only if the User has a Participance to the Problemset.
-  Submission json
+  Submission
 
     user UserId         -- User -[oneToMany]-> Submission
     problem ProblemId   -- Problem -[oneToMany]-> Submission
@@ -56,7 +56,7 @@ share [mkPersist sqlSettings, mkDeleteCascade sqlSettings, mkMigrate "migrateAll
     createdAt UTCTime
     modifiedAt UTCTime
 
-    deriving Show Generic
+    deriving Show Generic FromJSON ToJSON
 
   ---------------------------------
 
