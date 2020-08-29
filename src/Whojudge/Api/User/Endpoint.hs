@@ -1,15 +1,8 @@
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE KindSignatures        #-}
-{-# LANGUAGE NamedFieldPuns        #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE Rank2Types            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeOperators         #-}
 {-# LANGUAGE RecordWildCards       #-}
-{-# LANGUAGE BlockArguments        #-}
+{-# LANGUAGE TypeApplications      #-}
 
 module Whojudge.Api.User.Endpoint where
 
@@ -37,11 +30,8 @@ server perform auth =
   list where
 
   create :: User.Creation -> Handler NoContent
-  create cre@User.Creation{..} = do
+  create cre = do
     -- TODO: Add CAPTCHA and mail verification
-    -- Validate
-    Check.validUsername username
-    Check.validPassword password
     -- Create and insert
     newUser <- User.toEntry cre
     (perform $ DB.insertBy newUser)
@@ -64,7 +54,7 @@ server perform auth =
     (operId, oper) <- Check.auth perform auth
     operId == DB.toId uid || userIsAdmin oper
       & Check.false Err.notOwner
-    isNothing isAdmin || userIsAdmin oper
+    not isAdmin || userIsAdmin oper
       & Check.false Err.notAdmin
     isNothing password || BCrypt.validatePassword
       (T.encodeUtf8 $ fst $ fromJust password)

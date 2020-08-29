@@ -3,8 +3,6 @@
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE TypeApplications      #-}
@@ -12,20 +10,23 @@
 
 module Whojudge.Api.User.Schema where
 
+import           Control.Monad
 import           Control.Monad.IO.Class
 import qualified Crypto.KDF.BCrypt as BCrypt
 import qualified Data.Aeson as JSON
 import           Data.Function
+import           Data.Maybe
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import           Data.Time
 import qualified Database.Persist as DB
 import           GHC.Generics
 import           Servant
+import qualified Whojudge.Api.Checker as Check
 import qualified Whojudge.Api.Types as Api
 import qualified Whojudge.Config as Conf
 import           Whojudge.Database.Schema
-import qualified Whojudge.Database.Util as DB
+import           Whojudge.Database.Util as DB
 
 type EndpointName = "users"
 
@@ -46,6 +47,8 @@ data Creation = Creation
 
 toEntry :: Creation -> Handler Entry
 toEntry Creation{..} = do
+  Check.validUsername username
+  Check.validPassword password
   passwordHash <- liftIO $ BCrypt.hashPassword 10 (T.encodeUtf8 password)
   current <- liftIO getCurrentTime
   pure User
@@ -80,66 +83,56 @@ toRetrieve (DB.Entity uid User{..}) = Retrieve
 data Update = Update
   { username :: T.Text
   , description :: T.Text
-  , isAdmin :: Maybe Bool
+  , isAdmin :: Bool
   , password :: Maybe (T.Text, T.Text)
   } deriving (Show, Generic, JSON.FromJSON, JSON.ToJSON)
 
 toUpdate :: Update -> Handler [DB.Update Entry]
 toUpdate Update{..} = do
-  -- Handle admin change.
-  adminChange <-
-    case isAdmin of
-      Nothing -> pure []
-      Just flag -> pure [UserIsAdmin DB.=. flag]
+  Check.validUsername username
   -- Handle password change.
   passwordChange <-
     case password of
       Nothing -> pure []
       Just (old, new) -> do
         newHash <- liftIO $ BCrypt.hashPassword 10 (T.encodeUtf8 new)
-        pure [UserPasswordHash DB.=. T.decodeUtf8 newHash]
+        pure [UserPasswordHash =. T.decodeUtf8 newHash]
   current <- liftIO getCurrentTime
   pure $
-    adminChange ++
     passwordChange ++
-    [ UserUsername DB.=. username
-    , UserDescription DB.=. description
-    , UserModifiedAt DB.=. current ]
+    [ UserUsername =. username
+    , UserDescription =. description
+    , UserIsAdmin =. isAdmin
+    , UserModifiedAt =. current ]
 
 data SortByField
   = Username
-  | IsAdmin
   | CreatedAt
   | LastSubmission
   deriving (Show, Generic, JSON.FromJSON, JSON.ToJSON)
 
-data SortBy
-  = Ascending SortByField
-  | Descending SortByField
-  deriving (Show, Generic, JSON.FromJSON, JSON.ToJSON)
-
-toSelectOpt :: SortBy -> DB.SelectOpt Entry
-toSelectOpt (Ascending Username) = DB.Asc UserUsername
-toSelectOpt (Ascending IsAdmin) = DB.Asc UserIsAdmin
-toSelectOpt (Ascending CreatedAt) = DB.Asc UserCreatedAt
-toSelectOpt (Ascending LastSubmission) = DB.Asc UserLastSubmission
-toSelectOpt (Descending Username) = DB.Desc UserUsername
-toSelectOpt (Descending IsAdmin) = DB.Desc UserIsAdmin
-toSelectOpt (Descending CreatedAt) = DB.Desc UserCreatedAt
-toSelectOpt (Descending LastSubmission) = DB.Desc UserLastSubmission
+toSelectOpt :: Api.SortBy SortByField -> DB.SelectOpt Entry
+toSelectOpt (Api.Ascending Username) = DB.Asc UserUsername
+toSelectOpt (Api.Ascending CreatedAt) = DB.Asc UserCreatedAt
+toSelectOpt (Api.Ascending LastSubmission) = DB.Asc UserLastSubmission
+toSelectOpt (Api.Descending Username) = DB.Desc UserUsername
+toSelectOpt (Api.Descending CreatedAt) = DB.Desc UserCreatedAt
+toSelectOpt (Api.Descending LastSubmission) = DB.Desc UserLastSubmission
 
 data Criteria = Criteria
   { username :: [T.Text]
   , isAdmin :: Maybe Bool
-  , sortBy :: SortBy
+  , createdAt :: Api.Range UTCTime
+  , sortBy :: Api.SortBy SortByField
   } deriving (Show, Generic, JSON.FromJSON, JSON.ToJSON)
 
 toFilter :: Int -> Criteria -> ([DB.Filter Entry], [DB.SelectOpt Entry])
 toFilter page Criteria{..} =
-  ( case isAdmin of
-      Just x -> [UserIsAdmin DB.==. x]
-      Nothing -> []
-    ++ ((UserUsername `DB.ilike`) <$> username)
+  ( [ UserIsAdmin ==?. isAdmin
+    , UserCreatedAt `withinRange` createdAt
+    , (UserUsername `icontain`) <$> username
+      & DB.FilterAnd
+    ]
   , [ DB.LimitTo Conf.paginationLimit
     , DB.OffsetBy (Conf.paginationLimit * page)
     , toSelectOpt sortBy
