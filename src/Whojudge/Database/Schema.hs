@@ -27,14 +27,14 @@ import GHC.Generics
 share [mkPersist sqlSettings, mkDeleteCascade sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
 
   -- A user to a WhoJudge.
-  -- User is the only entity NOT specific to Problemsets. i.e. Users are global entities.
+  -- User is the only entity NOT specific to Scopes. i.e. Users are global entities.
   -- A user is either a normal user or an admin.
   User
 
     username Text
     passwordHash Text  -- Password is hashed through the bcrypt algorithm.
     description Text   -- This description can be parsed in any way preferred (it is parsed as markdown in twilight)
-    isAdmin Bool       -- Admin has implicit ownership to every problemset, and can modify and delete any user
+    isAdmin Bool       -- Admin has implicit ownership to every scope, and can modify and delete any user
     createdAt UTCTime
     modifiedAt UTCTime
     lastSubmission UTCTime
@@ -47,7 +47,7 @@ share [mkPersist sqlSettings, mkDeleteCascade sqlSettings, mkMigrate "migrateAll
 
   -- A submission made by a user.
   -- This includes the original updated source and the judge result.
-  -- A Submission to a Problem in a certain Problemset can be made only if the User has a Participance to the Problemset.
+  -- A Submission to a Problem in a certain Scope can be made only if the User has a Participance to the Scope.
   Submission
 
     user UserId         -- User -[oneToMany]-> Submission
@@ -61,14 +61,14 @@ share [mkPersist sqlSettings, mkDeleteCascade sqlSettings, mkMigrate "migrateAll
   ---------------------------------
 
   -- a set of problems plus extra organizing facilities.
-  -- Problemset provides abstraction for normal problem lists, large problem libraries and also contests.
-  -- Problemset is the basic organizing unit in a WhoJudge system, all other entities (except User) are specific to Problemsets.
-  Problemset
+  -- Scope provides abstraction for normal problem lists, large problem libraries and also contests.
+  -- Scope is the basic organizing unit in a WhoJudge system, all other entities (except User) are specific to Scopes.
+  Scope
 
     description Text                     -- This description can be parsed in any way preferred (it is parsed as markdown in twilight)
     startTime UTCTime Maybe                -- If set, the problems can only be submitted after the start time
     endTime UTCTime Maybe                  -- If set, the problems can not be submitted after the end time and new participants are no longer allowed
-    hasLeaderboard Bool                    -- If True, the problemset will have a leaderboard. Unavailable for problemsets with >50 problems
+    hasLeaderboard Bool                    -- If True, the scope will have a leaderboard. Unavailable for scopes with >50 problems
     -- Visibility options
     listed Bool                            -- Listed and can be found by search
     invitationOnly Bool                    -- Cannot join unless invited
@@ -87,7 +87,7 @@ share [mkPersist sqlSettings, mkDeleteCascade sqlSettings, mkMigrate "migrateAll
   -- A Problem 
   Problem
 
-    problemset ProblemsetId  -- Problems should be modifiable by all users with an Ownership to the Problemset
+    scope ScopeId  -- Problems should be modifiable by all users with an Ownership to the Scope
     content Text           -- Content is mere Text and can be interpreted in any format for max flexibility (parsed as markdown in twilight)
     createdAt UTCTime
     modifiedAt UTCTime
@@ -102,8 +102,8 @@ share [mkPersist sqlSettings, mkDeleteCascade sqlSettings, mkMigrate "migrateAll
 
   --------------------------------------
 
-  -- Represents a User's participance to a Problemset.
-  -- A User with a Participance to a specific Problemset is able to:
+  -- Represents a User's participance to a Scope.
+  -- A User with a Participance to a specific Scope is able to:
   -- * View problem listing;
   -- * View problems;
   -- * Create submissions;
@@ -111,20 +111,20 @@ share [mkPersist sqlSettings, mkDeleteCascade sqlSettings, mkMigrate "migrateAll
   Participance
 
     user UserId              -- User -[oneToMany]-> Participance
-    problemset ProblemsetId  -- Problemset -[oneToMany]-> Participance
+    scope ScopeId  -- Scope -[oneToMany]-> Participance
     createdAt UTCTime
     modifiedAt UTCTime
 
-    UniqueParticipance user problemset  -- A Participance is uniquely identified by its participant user and the participated problemset
+    UniqueParticipance user scope  -- A Participance is uniquely identified by its participant user and the participated scope
 
     deriving Show Generic FromJSON ToJSON
 
   ---------------------------------------
 
-  -- Ownership to a problemset. The creater of a problemset naturally has an Ownership, and every admin has an implicit ownership.
-  -- A user with an Ownership to a Problemset have complete control to the Problemset. They can:
+  -- Ownership to a scope. The creater of a scope naturally has an Ownership, and every admin has an implicit ownership.
+  -- A user with an Ownership to a Scope have complete control to the Scope. They can:
   -- * Automatically obtain an implicit Participance;
-  -- * Delete the Problemset;
+  -- * Delete the Scope;
   -- * Add/delete participants;
   -- * Add/delete/edit problems;
   -- * edit contest and visibility settings.
@@ -132,20 +132,20 @@ share [mkPersist sqlSettings, mkDeleteCascade sqlSettings, mkMigrate "migrateAll
   Ownership
 
     user UserId              -- User -[oneToMany]-> Ownership
-    problemset ProblemsetId  -- Problemset -[oneToMany]-> Ownership
+    scope ScopeId  -- Scope -[oneToMany]-> Ownership
     createdAt UTCTime
     modifiedAt UTCTime
 
-    UniqueOwnership user problemset  -- An Ownership is uniquely identified by the owner user and the owned problemset
+    UniqueOwnership user scope  -- An Ownership is uniquely identified by the owner user and the owned scope
 
     deriving Show Generic FromJSON ToJSON
 
   ----------------------------------------
 
-  -- An announcement is a message linked to a Problemset.
+  -- An announcement is a message linked to a Scope.
   Announcement
   
-    problemset ProblemsetId  -- Problemset -[oneToMany]-> Ownership
+    scope ScopeId  -- Scope -[oneToMany]-> Ownership
     content Text
     createdAt Text
     modifiedAt UTCTime

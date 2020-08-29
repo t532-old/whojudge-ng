@@ -29,6 +29,8 @@ import qualified Whojudge.Database.Util as DB
 
 type EndpointName = "users"
 
+type Entry = User
+
 type Point =
   Api.Authorized :>
     Api.Point EndpointName
@@ -42,7 +44,7 @@ data Creation = Creation
   , password :: T.Text
   } deriving (Show, Generic, JSON.FromJSON, JSON.ToJSON)
 
-toEntry :: Creation -> Handler User
+toEntry :: Creation -> Handler Entry
 toEntry Creation{..} = do
   passwordHash <- liftIO $ BCrypt.hashPassword 10 (T.encodeUtf8 password)
   current <- liftIO getCurrentTime
@@ -65,7 +67,7 @@ data Retrieve = Retrieve
   , lastSubmission :: UTCTime
   } deriving (Show, Generic, JSON.FromJSON, JSON.ToJSON)
 
-toRetrieve :: DB.Entity User -> Retrieve
+toRetrieve :: DB.Entity Entry -> Retrieve
 toRetrieve (DB.Entity uid User{..}) = Retrieve
   { uid = DB.fromId uid
   , username = userUsername
@@ -82,7 +84,7 @@ data Update = Update
   , password :: Maybe (T.Text, T.Text)
   } deriving (Show, Generic, JSON.FromJSON, JSON.ToJSON)
 
-toUpdate :: Update -> Handler [DB.Update User]
+toUpdate :: Update -> Handler [DB.Update Entry]
 toUpdate Update{..} = do
   -- Handle admin change.
   adminChange <-
@@ -116,7 +118,7 @@ data SortBy
   | Descending SortByField
   deriving (Show, Generic, JSON.FromJSON, JSON.ToJSON)
 
-toSelectOpt :: SortBy -> DB.SelectOpt User
+toSelectOpt :: SortBy -> DB.SelectOpt Entry
 toSelectOpt (Ascending Username) = DB.Asc UserUsername
 toSelectOpt (Ascending IsAdmin) = DB.Asc UserIsAdmin
 toSelectOpt (Ascending CreatedAt) = DB.Asc UserCreatedAt
@@ -132,7 +134,7 @@ data Criteria = Criteria
   , sortBy :: SortBy
   } deriving (Show, Generic, JSON.FromJSON, JSON.ToJSON)
 
-toFilter :: Int -> Criteria -> ([DB.Filter User], [DB.SelectOpt User])
+toFilter :: Int -> Criteria -> ([DB.Filter Entry], [DB.SelectOpt Entry])
 toFilter page Criteria{..} =
   ( case isAdmin of
       Just x -> [UserIsAdmin DB.==. x]

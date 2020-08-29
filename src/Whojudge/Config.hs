@@ -18,13 +18,13 @@ numConnections = 10
 appPort :: Int
 appPort = 8080
 
--- Allow normal users to create Problemsets.
-allowNonAdminProblemsetCreation :: Bool
-allowNonAdminProblemsetCreation = False
+-- Allow normal users to create Scopes.
+allowNonAdminScopeCreation :: Bool
+allowNonAdminScopeCreation = False
 
--- Allow normal users to make Problemsets listed.
-allowNonAdminProblemsetListed :: Bool
-allowNonAdminProblemsetListed = False
+-- Allow normal users to make Scopes listed.
+allowNonAdminScopeListed :: Bool
+allowNonAdminScopeListed = False
 
 -- Max problem number allowed in contest mode.
 contestModeMaxProblems :: Int
