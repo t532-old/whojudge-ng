@@ -17,11 +17,11 @@ import qualified Database.Persist as DB
 import           Servant
 import qualified Whojudge.Api.Checker as Check
 import qualified Whojudge.Api.Error as Err
-import qualified Whojudge.Api.User.Schema as User
+import           Whojudge.Api.User.Schema
 import           Whojudge.Database.Schema
 import qualified Whojudge.Database.Util as DB
 
-server :: DB.Handle -> Server User.Point
+server :: DB.Handle -> Server Point
 server perform auth =
   create :<|>
   retrieve :<|>
@@ -29,16 +29,16 @@ server perform auth =
   delete :<|>
   list where
 
-  create :: User.Creation -> Handler NoContent
+  create :: Creation -> Handler NoContent
   create cre = do
     -- TODO: Add CAPTCHA and mail verification
     -- Create and insert
-    newUser <- User.toEntry cre
+    newUser <- toEntry cre
     (perform $ DB.insertBy newUser)
       >>= (& Check.left err403 {errBody = "This username is already used."})
     pure NoContent
 
-  retrieve :: Int -> Handler User.Retrieve
+  retrieve :: Int -> Handler Retrieve
   retrieve uid = do
     -- Auth
     Check.auth perform auth
@@ -46,10 +46,10 @@ server perform auth =
     user <- (perform $ DB.get $ DB.toId @User uid)
       >>= (& Check.nothing Err.notExist)
     -- Truncate and return
-    pure $ User.toRetrieve $ DB.Entity (DB.toId uid) user
+    pure $ toRetrieve $ DB.Entity (DB.toId uid) user
   
-  update :: Int -> User.Update -> Handler NoContent
-  update uid upd@User.Update{..} = do
+  update :: Int -> Update -> Handler NoContent
+  update uid upd@Update{..} = do
     -- Auth
     (operId, oper) <- Check.auth perform auth
     operId == DB.toId uid || userIsAdmin oper
@@ -60,7 +60,7 @@ server perform auth =
       (T.encodeUtf8 $ fst $ fromJust password)
       (T.encodeUtf8 $ userPasswordHash oper)
       & Check.false Err.wrongPassword
-    updList <- User.toUpdate upd
+    updList <- toUpdate upd
     perform $ DB.update (DB.toId @User uid) updList
     -- End
     pure NoContent
@@ -79,8 +79,8 @@ server perform auth =
     perform $ DB.deleteCascade (DB.toId @User uid)
     pure NoContent
 
-  list :: Int -> User.Criteria -> Handler [User.Retrieve]
+  list :: Int -> Criteria -> Handler [Retrieve]
   list page cri = do
     Check.auth perform auth
-    userEnts <- perform $ uncurry DB.selectList $ User.toFilter page cri
-    pure $ User.toRetrieve <$> userEnts
+    userEnts <- perform $ uncurry DB.selectList $ toFilter page cri
+    pure $ toRetrieve <$> userEnts
