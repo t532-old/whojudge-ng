@@ -18,6 +18,11 @@ numConnections = 10
 appPort :: Int
 appPort = 8080
 
+-- Password for an auto-created admin user "root".
+-- Do NOT change root user's username, ortherwise a new root will be created on the next restart.
+rootPassword :: T.Text
+rootPassword = "default_root_password_change_me"
+
 -- Allow normal users to create Scopes.
 allowNonAdminScopeCreation :: Bool
 allowNonAdminScopeCreation = False
