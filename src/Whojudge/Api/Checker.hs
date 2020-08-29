@@ -1,6 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications  #-}
 {-# LANGUAGE Rank2Types #-}
+
 module Whojudge.Api.Checker where
 
 import qualified Data.ByteString.Lazy as BS

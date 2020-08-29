@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 module Whojudge.Config where
 
 import           Data.Char
